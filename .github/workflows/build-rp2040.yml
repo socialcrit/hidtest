@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'firmware/**'
+      - '.github/workflows/build-rp2040.yml'
+  workflow_dispatch:
   workflow_call:
 defaults:
   run:
@@ -14,6 +16,23 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: true
+      - name: Ensure firmware submodules are present
+        working-directory: ./firmware
+        run: |
+          fetch_dep() {
+            local dir="$1" url="$2" sha="$3" check="$4"
+            if [ ! -f "$dir/$check" ]; then
+              rm -rf "$dir"
+              git init -q "$dir"
+              git -C "$dir" remote add origin "$url"
+              git -C "$dir" fetch -q --depth 1 origin "$sha"
+              git -C "$dir" checkout -q FETCH_HEAD
+            fi
+          }
+          fetch_dep "usb_midi_host" "https://github.com/rppicomidi/usb_midi_host.git" "7d846f0fd24c03eede16e9cbe8297038108aedc7" "CMakeLists.txt"
+          fetch_dep "pico-sdk" "https://github.com/raspberrypi/pico-sdk.git" "bddd20f928ce76142793bef434d4f75f4af6e433" "pico_sdk_init.cmake"
+          fetch_dep "tinyusb" "https://github.com/jfedor2/tinyusb.git" "f77793517e3b016a89f75f3a5ad0bee57f0ad554" "src/tusb.h"
+          fetch_dep "Pico-PIO-USB" "https://github.com/jfedor2/Pico-PIO-USB.git" "37965f8895fffb4ffacace86e1f731f908dc18e0" "src/pio_usb.h"
       - name: Install compiler, libraries and tools
         run: |
           sudo apt update

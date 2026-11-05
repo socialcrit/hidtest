@@ -1,5 +1,48 @@
 cmake_minimum_required(VERSION 3.13)
 
+function(ensure_dependency DIR_NAME REPO_URL COMMIT_SHA CHECK_FILE)
+    set(DEP_PATH "${CMAKE_CURRENT_LIST_DIR}/${DIR_NAME}")
+    if(NOT EXISTS "${DEP_PATH}/${CHECK_FILE}")
+        message(STATUS "Fetching ${DIR_NAME} (${COMMIT_SHA}) from ${REPO_URL}...")
+        file(REMOVE_RECURSE "${DEP_PATH}")
+        execute_process(
+            COMMAND git init -q "${DEP_PATH}"
+            RESULT_VARIABLE GIT_RESULT
+        )
+        execute_process(
+            COMMAND git -C "${DEP_PATH}" remote add origin "${REPO_URL}"
+            RESULT_VARIABLE GIT_RESULT
+        )
+        execute_process(
+            COMMAND git -C "${DEP_PATH}" fetch -q --depth 1 origin "${COMMIT_SHA}"
+            RESULT_VARIABLE GIT_RESULT
+        )
+        if(NOT GIT_RESULT EQUAL 0)
+            execute_process(
+                COMMAND git -C "${DEP_PATH}" fetch -q origin
+                RESULT_VARIABLE GIT_RESULT
+            )
+            execute_process(
+                COMMAND git -C "${DEP_PATH}" checkout -q "${COMMIT_SHA}"
+                RESULT_VARIABLE GIT_RESULT
+            )
+        else()
+            execute_process(
+                COMMAND git -C "${DEP_PATH}" checkout -q FETCH_HEAD
+                RESULT_VARIABLE GIT_RESULT
+            )
+        endif()
+        if(NOT EXISTS "${DEP_PATH}/${CHECK_FILE}")
+            message(FATAL_ERROR "Failed to fetch dependency ${DIR_NAME} from ${REPO_URL}")
+        endif()
+    endif()
+endfunction()
+
+ensure_dependency("usb_midi_host" "https://github.com/rppicomidi/usb_midi_host.git" "7d846f0fd24c03eede16e9cbe8297038108aedc7" "CMakeLists.txt")
+ensure_dependency("pico-sdk" "https://github.com/raspberrypi/pico-sdk.git" "bddd20f928ce76142793bef434d4f75f4af6e433" "pico_sdk_init.cmake")
+ensure_dependency("tinyusb" "https://github.com/jfedor2/tinyusb.git" "f77793517e3b016a89f75f3a5ad0bee57f0ad554" "src/tusb.h")
+ensure_dependency("Pico-PIO-USB" "https://github.com/jfedor2/Pico-PIO-USB.git" "37965f8895fffb4ffacace86e1f731f908dc18e0" "src/pio_usb.h")
+
 add_subdirectory(usb_midi_host)
 
 add_compile_definitions(PICO_DEFAULT_UART_BAUD_RATE=921600)
