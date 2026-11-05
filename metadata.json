@@ -1,0 +1,8 @@
+{
+  "name": "HID Remapper Configuration",
+  "description": "Web-based configuration tool for HID Remapper devices to customize keymappings, macros, expressions, quirks, and device settings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
