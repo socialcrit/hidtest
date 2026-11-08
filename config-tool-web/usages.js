@@ -54,9 +54,9 @@ const usages = {
         "0x00010034": { 'name': 'R2 axis', 'class': 'gamepad' },
         "0x000200c5": { 'name': 'Brake', 'class': 'mouse' },
         "0x000200c4": { 'name': 'Accelerator', 'class': 'mouse' },
-        "0xfff80001": { 'name': 'Footpedal left', 'class': 'mouse' },
-        "0xfff80002": { 'name': 'Footpedal middle', 'class': 'mouse' },
-        "0xfff80003": { 'name': 'Footpedal right', 'class': 'mouse' },
+        "0x00090011": { 'name': 'Footpedal left (Button 17)', 'class': 'mouse' },
+        "0x00090012": { 'name': 'Footpedal middle (Button 18)', 'class': 'mouse' },
+        "0x00090013": { 'name': 'Footpedal right (Button 19)', 'class': 'mouse' },
     },
     'source': {
         "0x000700e0": { 'name': 'Left Control', 'class': 'keyboard' },
@@ -282,6 +282,9 @@ const usages = {
         "0x00090006": { 'name': 'Button 6', 'class': 'mouse' },
         "0x00090007": { 'name': 'Button 7', 'class': 'mouse' },
         "0x00090008": { 'name': 'Button 8', 'class': 'mouse' },
+        "0x00090011": { 'name': 'Footpedal left (Button 17)', 'class': 'mouse' },
+        "0x00090012": { 'name': 'Footpedal middle (Button 18)', 'class': 'mouse' },
+        "0x00090013": { 'name': 'Footpedal right (Button 19)', 'class': 'mouse' },
         "0x00010030": { 'name': 'Cursor X', 'class': 'mouse' },
         "0x00010031": { 'name': 'Cursor Y', 'class': 'mouse' },
         "0x00010038": { 'name': 'V scroll', 'class': 'mouse' },
@@ -649,12 +652,5 @@ Object.assign(usages[3], common_target_usages);
 Object.assign(usages[4], common_target_usages);
 Object.assign(usages[5], common_target_usages);
 usages[1] = usages[0]; // absolute mouse & keyboard is the same as regular mouse & keyboard
-usages[6] = {
-    ...usages[0],
-    "0xfff80001": { 'name': 'Footpedal left', 'class': 'mouse' },
-    "0xfff80002": { 'name': 'Footpedal middle', 'class': 'mouse' },
-    "0xfff80003": { 'name': 'Footpedal right', 'class': 'mouse' },
-};
-Object.assign(usages[6], common_target_usages);
 
 export default usages;

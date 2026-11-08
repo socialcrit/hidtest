@@ -14,11 +14,11 @@
 #define REPORT_ID_MOUSE 1
 #define REPORT_ID_KEYBOARD 2
 #define REPORT_ID_CONSUMER 3
-#define REPORT_ID_FOOTPEDAL 4
+#define REPORT_ID_PEDAL 9
 
-#define MAX_INPUT_REPORT_ID 4
+#define MAX_INPUT_REPORT_ID 9
 
-#define NOUR_DESCRIPTORS 7
+#define NOUR_DESCRIPTORS 6
 
 typedef void (*device_connected_t)(uint16_t interface, uint16_t vid, uint16_t pid);
 typedef void (*device_disconnected_t)(uint8_t dev_addr);
@@ -53,16 +53,12 @@ struct our_descriptor_def_t {
     default_value_t default_value = nullptr;
     sanitize_report_t sanitize_report = nullptr;
     should_cause_wakeup_t should_cause_wakeup = nullptr;
-    const uint8_t* secondary_descriptor = nullptr;
-    uint32_t secondary_descriptor_length = 0;
-    const char* manufacturer_name = nullptr;
-    const char* product_name = nullptr;
 };
 
 extern const our_descriptor_def_t our_descriptors[];
 
-extern const uint8_t our_report_descriptor_footpedal[];
-extern const uint32_t our_report_descriptor_footpedal_length;
+extern const uint8_t pedal_report_descriptor[];
+extern const uint32_t pedal_report_descriptor_length;
 
 extern const uint8_t config_report_descriptor[];
 extern const uint32_t config_report_descriptor_length;

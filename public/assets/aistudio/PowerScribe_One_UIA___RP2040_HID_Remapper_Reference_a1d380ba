@@ -1,0 +1,204 @@
+﻿PowerScribe One UIA & RP2040 HID Remapper Reference
+1. Executive Summary & AI Studio Context
+This document serves as a complete architectural and code reference for automating Nuance PowerScribe One (Nuance.PSOne.exe) using AutoHotkey v2 UI Automation (UIA-v2) and emulating a VEC Infinity USB Foot Pedal (VID 0x05F3, PID 0x00FF) on a single RP2040 microcontroller running custom HID Remapper (jfedor2/hid-remapper) firmware.
+
+
+________________
+
+
+2. PowerScribe One UI Architecture & AutoHotkey v2 UIA
+* Framework: PowerScribe One is built on WPF (Windows Presentation Foundation), whereas older PowerScribe 360 is built on WinForms. Neither uses WinUI.
+* Window Class Structure: Top-level windows expose dynamic classes (HwndWrapper[Nuance.PSOne.exe;;...]) rendered inside a single DirectX surface without child Win32 HWND handles.
+* Automation Method: Standard Win32 calls (ControlClick, ControlGetText) fail. Automation requires Microsoft UI Automation (IUIAutomation) via Descolada's UIA.ahk (UIA-v2) library targeting AutomationId, Name, and Type.
+* WPF Quirks:
+   * Some toolbar controls only implement LegacyIAccessiblePattern instead of InvokePattern (fallback: .LegacyIAccessiblePattern.DoDefaultAction() or .ControlClick()).
+   * Multi-window floating layouts require narrowing the root handle by title (e.g., PowerScribe One - Report ahk_exe Nuance.PSOne.exe).
+AHK v2 UIA Reference Script
+#Requires AutoHotkey v2.0
+#SingleInstance Force
+#Include <UIA>
+
+
+#HotIf WinActive("ahk_exe Nuance.PSOne.exe")
+^!s:: {
+    try {
+        psRoot := UIA.ElementFromHandle("ahk_exe Nuance.PSOne.exe")
+        signBtn := psRoot.FindElement({Name: "Sign", Type: "Button", matchmode: "Substring"})
+        signBtn.Invoke()
+    } catch Error as e {
+        ToolTip("UIA Error: " e.Message)
+        SetTimer(() => ToolTip(), -2500)
+    }
+}
+
+
+^!r:: {
+    try {
+        psRoot := UIA.ElementFromHandle("ahk_exe Nuance.PSOne.exe")
+        editor := psRoot.FindElement({Type: "Document"})
+        currentText := editor.Value
+        MsgBox("Character count: " StrLen(currentText), "PSOne Report Text")
+        editor.SetFocus()
+    } catch Error as e {
+        ToolTip("Editor not found: " e.Message)
+        SetTimer(() => ToolTip(), -2500)
+    }
+}
+#HotIf
+
+________________
+
+
+3. USB HID Emulation & Why Report IDs Fail in PowerScribe
+* Why Pure AHK Cannot Spoof USB HID: AutoHotkey injects events at user-mode via SendInput, whereas PowerScribe communicates directly with hid.dll to enumerate specific hardware Vendor/Product IDs (VID_0554 for PowerMic, VID_05F3 & PID_00FF for VEC Infinity Foot Pedal) and reads raw byte streams.
+* The Multi-Collection Report ID Trap:
+   * A genuine VEC Infinity foot pedal (VID 0x05F3, PID 0x00FF) has no Report ID (0x85) in its HID Report Descriptor.
+   * On wire, it sends a pure 2-byte packet: [01 00] (Left), [02 00] (Middle), [04 00] (Right), [00 00] (Released).
+   * Windows hid.dll prepends a leading 0x00 byte when no Report ID is present, handing PowerScribe a 3-byte buffer ([0x00, button_bitmask, 0x00]) where PowerScribe reads buffer[1].
+   * If the foot pedal descriptor is merged into HID Remapper's main composite report descriptor using a Report ID (e.g., Report ID 4), Windows creates virtual child collections (Col01, Col04) and prefixes the packet with 0x04 ([0x04, 0x01, 0x00]). PowerScribe either attaches to the wrong collection (Col01 keyboard) or rejects the shifted report buffer.
+
+
+________________
+
+
+4. Single-RP2040 Consolidation Architecture (3-Interface USB Composite)
+To run both HID Remapper and the VEC foot pedal on a single RP2040 without a second CircuitPython board or GPIO jumper loops:
+
+
+1. Use Separate USB Interfaces (MI_00, MI_01, MI_02), NOT Report IDs (Col04): Windows usbccgp.sys splits separate USB interfaces at the bus level before hid.dll parses them.
+2. Interface 0 (ITF_NUM_PEDAL = 0, EP 0x81): Dedicated to the 18-byte, Report-ID-less VEC foot pedal descriptor. PowerScribe attaches to the first matching interface (MI_00) and receives pure 2-byte packets (report_id = 0 in TinyUSB).
+3. Interface 1 (ITF_NUM_HID = 1, EP 0x82): Standard HID Remapper composite Keyboard/Mouse output.
+4. Interface 2 (ITF_NUM_CONFIG = 2, EP 0x83): HID Remapper Web Configurator (Usage Page 0xFF00).
+5. Internal Mapping Trick: Keep an internal REPORT_ID_PEDAL (9) entry inside our_report_descriptor mapped to Button 17–Button 19 (0x00090011–0x00090013) so parse_our_descriptor() exposes the pedal buttons in remapper.org/config without colliding with standard mouse buttons (Button 1–Button 5), then intercept REPORT_ID_PEDAL in send_report() and transmit it out of Interface 0 with report_id = 0.
+
+
+________________
+
+
+5. Exact C++ Firmware Modifications (jfedor2/hid-remapper)
+5.1 firmware/src/tusb_config.h
+// Increase TinyUSB HID interfaces from 2 to 3
+#define CFG_TUD_HID               3
+5.2 firmware/src/our_descriptors.h
+#define REPORT_ID_PEDAL 9
+
+
+extern const uint8_t pedal_report_descriptor[];
+extern const uint32_t pedal_report_descriptor_length;
+5.3 firmware/src/our_descriptors.cc
+// 1. Standalone Report-ID-less descriptor exposed on USB Interface 0 (MI_00)
+const uint8_t pedal_report_descriptor[] = {
+    0x05, 0x0C,       // Usage Page (Consumer)
+    0x09, 0x03,       // Usage (Programmable Buttons)
+    0xA1, 0x01,       // Collection (Application)
+    0x05, 0x09,       //   Usage Page (Button)
+    0x19, 0x01,       //   Usage Minimum (Button 1 - Left Pedal)
+    0x29, 0x03,       //   Usage Maximum (Button 3 - Right Pedal)
+    0x15, 0x00,       //   Logical Minimum (0)
+    0x25, 0x01,       //   Logical Maximum (1)
+    0x95, 0x03,       //   Report Count (3)
+    0x75, 0x01,       //   Report Size (1)
+    0x81, 0x02,       //   Input (Data,Var,Abs)
+    0x95, 0x01,       //   Report Count (1)
+    0x75, 0x0D,       //   Report Size (13 bits constant padding = 2 bytes total)
+    0x81, 0x01,       //   Input (Const,Ary,Abs)
+    0xC0              // End Collection
+};
+const uint32_t pedal_report_descriptor_length = sizeof(pedal_report_descriptor);
+
+
+// 2. Append inside our_report_descriptor[] for internal remapper engine parsing:
+    0x05, 0x0C,             // Usage Page (Consumer)
+    0x09, 0x03,             // Usage (Programmable Buttons)
+    0xA1, 0x01,             // Collection (Application)
+    0x85, REPORT_ID_PEDAL,  //   Report ID (9 - internal tracking only)
+    0x05, 0x09,             //   Usage Page (Button)
+    0x19, 0x11,             //   Usage Minimum (Button 17 -> Left Pedal)
+    0x29, 0x13,             //   Usage Maximum (Button 19 -> Right Pedal)
+    0x15, 0x00,             //   Logical Minimum (0)
+    0x25, 0x01,             //   Logical Maximum (1)
+    0x95, 0x03,             //   Report Count (3)
+    0x75, 0x01,             //   Report Size (1)
+    0x81, 0x02,             //   Input (Data,Var,Abs)
+    0x95, 0x01,             //   Report Count (1)
+    0x75, 0x0D,             //   Report Size (13)
+    0x81, 0x01,             //   Input (Const,Ary,Abs)
+    0xC0,                   // End Collection
+5.4 firmware/src/usb_descriptors.c
+tusb_desc_device_t const desc_device = {
+    .bLength            = sizeof(tusb_desc_device_t),
+    .bDescriptorType    = TUSB_DESC_DEVICE,
+    .bcdUSB             = 0x0200,
+    .bDeviceClass       = 0x00,
+    .bDeviceSubClass    = 0x00,
+    .bDeviceProtocol    = 0x00,
+    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
+    .idVendor           = 0x05F3, // VEC / PI Engineering
+    .idProduct          = 0x00FF, // VEC Infinity Footpedal
+    .bcdDevice          = 0x0100,
+    .iManufacturer      = 0x01,
+    .iProduct           = 0x02,
+    .iSerialNumber      = 0x00,
+    .bNumConfigurations = 0x01
+};
+
+
+enum {
+    ITF_NUM_PEDAL = 0,   // Interface 0: VEC Foot Pedal (no Report ID)
+    ITF_NUM_HID,         // Interface 1: Keyboard / Mouse
+    ITF_NUM_CONFIG,      // Interface 2: Web Config (0xFF00)
+    ITF_NUM_TOTAL
+};
+
+
+#define EPNUM_PEDAL   0x81
+#define EPNUM_HID     0x82
+#define EPNUM_CONFIG  0x83
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + 3 * TUD_HID_DESC_LEN)
+
+
+uint8_t desc_configuration[] = {
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, sizeof(pedal_report_descriptor), EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, 0, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, sizeof(config_report_descriptor), EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
+};
+
+
+uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
+    uint32_t hid_desc_offset = TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + 7;
+    desc_configuration[hid_desc_offset]     = our_descriptor->descriptor_length & 0xFF;
+    desc_configuration[hid_desc_offset + 1] = (our_descriptor->descriptor_length >> 8) & 0xFF;
+    return desc_configuration;
+}
+
+
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {
+    if (instance == ITF_NUM_PEDAL) {
+        return pedal_report_descriptor;
+    } else if (instance == ITF_NUM_HID) {
+        return our_descriptor->descriptor;
+    } else {
+        return config_report_descriptor;
+    }
+}
+5.5 firmware/src/remapper.cc
+// Inside send_report() loop:
+if (report_id == REPORT_ID_PEDAL) {
+    // Transmit on Interface 0 with report_id = 0 (omits Report ID byte on wire)
+    if (tud_hid_n_ready(0)) {
+        tud_hid_n_report(0, 0, report, report_sizes[interface][report_id]);
+    }
+} else {
+    // Transmit normal Keyboard/Mouse reports on Interface 1
+    if (tud_hid_n_ready(1)) {
+        tud_hid_n_report(1, report_id, report, report_sizes[interface][report_id]);
+    }
+}
+
+
+// Note: Update Web Configurator (REPORT_ID_CONFIG) callbacks/sends from instance 1 to instance 2 (ITF_NUM_CONFIG).
+5.6 Web Configurator Mapping (remapper.org/config)
+* Left Pedal ([01 00]): Custom Usage 0x00090011 (Button 17)
+* Middle Pedal ([02 00]): Custom Usage 0x00090012 (Button 18)
+* Right Pedal ([04 00]): Custom Usage 0x00090013 (Button 19)

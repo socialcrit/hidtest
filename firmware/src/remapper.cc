@@ -559,9 +559,6 @@ void set_mapping_from_config() {
 
     if (unmapped_passthrough_layer_mask) {
         for (auto const& [usage, usage_def] : our_usages_flat) {
-            if ((usage & 0xFFFF0000) == FOOTPEDAL_USAGE_PAGE) {
-                continue;
-            }
             uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
             if (unmapped_layers) {
                 if (assign_state_slot(usage, 0, false)) {
@@ -1445,11 +1442,12 @@ bool send_report(send_report_t do_send_report) {
 
     bool sent = false;
     if (our_descriptor == &our_descriptors[our_descriptor_number]) {
-        uint8_t itf = 0;
-        if (our_descriptor->secondary_descriptor != nullptr && report_id == 0) {
-            itf = 1;
+        if (report_id == REPORT_ID_PEDAL) {
+            uint8_t pedal_report[3] = { 0, outgoing_reports[or_head][1], outgoing_reports[or_head][2] };
+            sent = do_send_report(0, pedal_report, report_sizes[report_id] + 1);
+        } else {
+            sent = do_send_report(1, outgoing_reports[or_head], report_sizes[report_id] + 1);
         }
-        sent = do_send_report(itf, outgoing_reports[or_head], report_sizes[report_id] + 1);
         if (!sent) {
             return false;
         }
@@ -1468,8 +1466,7 @@ bool send_monitor_report(send_report_t do_send_report) {
         return false;
     }
 
-    uint8_t config_itf = (our_descriptor->secondary_descriptor != nullptr) ? 2 : 1;
-    bool sent = do_send_report(config_itf, (uint8_t*) &monitor_report[monitor_report_idx], sizeof(monitor_report_t));
+    bool sent = do_send_report(2, (uint8_t*) &monitor_report[monitor_report_idx], sizeof(monitor_report_t));
     if (!sent) {
         return false;
     }
@@ -1986,21 +1983,6 @@ void parse_our_descriptor() {
         boot_protocol_keyboard ? boot_kb_report_descriptor : our_descriptor->descriptor,
         boot_protocol_keyboard ? boot_kb_report_descriptor_length : our_descriptor->descriptor_length);
 
-    if (our_descriptor->secondary_descriptor != nullptr) {
-        auto sec_report_sizes_map = parse_descriptor(
-            our_usages,
-            their_usages[OUR_OUT_INTERFACE],
-            our_feature_usages,
-            has_report_id_theirs[OUR_OUT_INTERFACE],
-            our_descriptor->secondary_descriptor,
-            our_descriptor->secondary_descriptor_length);
-        for (auto const& [type, map] : sec_report_sizes_map) {
-            for (auto const& [rep_id, sz] : map) {
-                report_sizes_map[type][rep_id] = sz;
-            }
-        }
-    }
-
     for (auto const& [report_id, size] : report_sizes_map[ReportType::INPUT]) {
         report_sizes[report_id] = size;
         reports[report_id] = new uint8_t[size];
@@ -2019,20 +2001,7 @@ void parse_our_descriptor() {
     for (auto const& [report_id, usage_map] : our_usages) {
         for (auto const& [usage, usage_def] : usage_map) {
             if (usage_def.usage_maximum == 0) {
-                if ((our_descriptor->secondary_descriptor != nullptr && report_id == 0) || (report_id == REPORT_ID_FOOTPEDAL)) {
-                    if (usage == 0x00090001) {
-                        our_usages_flat[FOOTPEDAL_USAGE_LEFT] = usage_def;
-                    } else if (usage == 0x00090002) {
-                        our_usages_flat[FOOTPEDAL_USAGE_MIDDLE] = usage_def;
-                    } else if (usage == 0x00090003) {
-                        our_usages_flat[FOOTPEDAL_USAGE_RIGHT] = usage_def;
-                    }
-                    if (our_usages.find(REPORT_ID_MOUSE) == our_usages.end()) {
-                        our_usages_flat[usage] = usage_def;
-                    }
-                } else {
-                    our_usages_flat[usage] = usage_def;
-                }
+                our_usages_flat[usage] = usage_def;
                 if (usage == DPAD_USAGE) {
                     our_dpad_usage = usage_def;
                     have_dpad = true;
@@ -2057,10 +2026,6 @@ void parse_our_descriptor() {
                 put_bits(report_masks_absolute[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size * usage_def.count, 0xFFFFFFFF);
             }
         }
-    }
-
-    if ((our_descriptor->secondary_descriptor != nullptr) || (our_usages.find(REPORT_ID_FOOTPEDAL) != our_usages.end())) {
-        our_usage_ranges_set.insert(((uint64_t) FOOTPEDAL_USAGE_LEFT << 32) | FOOTPEDAL_USAGE_RIGHT);
     }
 
     rlencode(our_usage_ranges_set, our_usages_rle);

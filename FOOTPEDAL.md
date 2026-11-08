@@ -1,6 +1,26 @@
-# VEC USB Footpedal (Infinity IN-USB-2) Emulation Reference
+# VEC USB Footpedal (`05F3:00FF`) & PowerScribe One RP2040 Consolidation Reference
 
-## Stored CircuitPython Reference (`boot.py` / `code.py`)
+## 1. USB Identification & 3-Interface Composite Architecture
+
+To satisfy applications such as Nuance PowerScribe One (which query `VID=0x05F3`, `PID=0x00FF` and require a standalone Report-ID-less 2-byte HID interface on Interface 0) while retaining full HID Remapper Keyboard, Mouse, and WebHID Configurator capabilities on a single RP2040, the firmware exposes a 3-interface USB composite layout:
+
+| Interface | Constant | Endpoint | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Interface 0** | `ITF_NUM_PEDAL = 0` | `EPNUM_PEDAL = 0x81` | Standalone 29-byte Report-ID-less VEC Footpedal (`Usage Page 0x0C`, `Usage 0x03`, 2-byte unnumbered reports: `01 00` Left, `02 00` Middle, `04 00` Right) |
+| **Interface 1** | `ITF_NUM_HID = 1` | `EPNUM_HID = 0x82` | Standard HID Remapper composite Keyboard, Mouse, Media, and Gamepad output (`Report IDs 1–5`) |
+| **Interface 2** | `ITF_NUM_CONFIG = 2` | `EPNUM_CONFIG = 0x83` | HID Remapper WebHID Configurator & Input Monitor (`Usage Page 0xFF00`) |
+
+## 2. Internal Mapping via `REPORT_ID_PEDAL (9)` (`0x00090011`–`0x00090013`)
+
+Inside `our_report_descriptor_kb_mouse` and `our_report_descriptor_absolute`, an internal `REPORT_ID_PEDAL (9)` collection maps `Button 17`–`Button 19` (`0x00090011`–`0x00090013`):
+
+- **`0x00090011`**: Footpedal left (`Button 17`) → Bit 0 (`01 00`)
+- **`0x00090012`**: Footpedal middle (`Button 18`) → Bit 1 (`02 00`)
+- **`0x00090013`**: Footpedal right (`Button 19`) → Bit 2 (`04 00`)
+
+When `send_report()` in `firmware/src/remapper.cc` processes a report with `report_id == REPORT_ID_PEDAL (9)`, it strips the internal Report ID (`9` → `0`) and transmits the 2-byte payload directly out of **Interface 0 (`ITF_NUM_PEDAL = 0`)**. Standard Keyboard and Mouse reports are transmitted out of **Interface 1 (`ITF_NUM_HID = 1`)**, and WebHID monitor reports are transmitted out of **Interface 2 (`ITF_NUM_CONFIG = 2`)**.
+
+## 3. Original CircuitPython Reference
 
 ```python
 FOOTPAD_REPORT_DESCRIPTOR = bytes((  
@@ -22,7 +42,7 @@ FOOTPAD_REPORT_DESCRIPTOR = bytes((
     0x75, 0x08,  #   Report Size (8)  8 bits of padding?
     0x81, 0x01,  #   Input
     0xC0,        #   End Collection
-)) # 35 bytes
+)) # 67 bytes
 
 footpad = usb_hid.Device(
     report_descriptor=FOOTPAD_REPORT_DESCRIPTOR,
@@ -34,29 +54,9 @@ footpad = usb_hid.Device(
 )
 
 supervisor.set_usb_identification(
-    manufacturer='VEC',
-    product='VEC USB Footpedal',
-    vid=0x05F3, 
-    pid=0x00FF 
+                                  manufacturer='VEC',
+                                  product='VEC USB Footpedal',
+                                  vid=0x05F3, 
+                                  pid=0x00FF 
 )
 ```
-
-## Single-Pico Composite Architecture in HID Remapper (`our_descriptors[6]`)
-
-### Why Embedding `REPORT_ID_FOOTPEDAL (4)` in the Keyboard/Mouse Descriptor Failed
-When the footpedal collection was merged into the primary Keyboard/Mouse report descriptor using `Report ID 4`, the USB HID stack prepended `0x04` to every footpedal packet (`04 01 00` instead of `01 00`). Host software expecting a VEC USB Footpedal (`VID=0x05F3`, `PID=0x00FF`) opens the `Usage Page 0x0C / Usage 0x03` collection expecting an **unnumbered** 2-byte report (`report_id = 0`, length `2`: `01 00` for Left, `02 00` for Middle, `04 00` for Right, `00 00` for released).
-
-### How HID Remapper Emulates Both on a Single Pico
-1. **Separate USB HID Interfaces**:
-   - **Interface 0 (`0x81`)**: Standard Keyboard, Mouse, and Consumer Control (`Report IDs 1, 2, 3`).
-   - **Interface 1 (`0x82`)**: Dedicated VEC USB Footpedal (`our_report_descriptor_footpedal`, `Usage Page 0x0C, Usage 0x03`, `report_id = 0`, 2-byte input reports).
-   - **Interface 2 (`0x83`)**: WebHID Configuration & Monitor interface (`Usage Page 0xFF00, Usage 0x0020`).
-2. **Exact USB Device Identification**:
-   - `idVendor = 0x05F3`, `idProduct = 0x00FF`
-   - `iManufacturer = "VEC"`, `iProduct = "VEC USB Footpedal"`
-3. **Single-Button (No-Rollover) Packet Sanitization (`footpedal_sanitize_report`)**:
-   - Ensures each 2-byte footpedal report on `report_id = 0` emits at most one active button bit at a time (`01 00` Left, `02 00` Middle, `04 00` Right, or `00 00` released), matching the single-button GPIO bridge behavior while keeping full Keyboard & Mouse passthrough active.
-4. **Target Usages in Web Config Tool**:
-   - `0xfff80001` — **Footpedal left** (`01 00`)
-   - `0xfff80002` — **Footpedal middle** (`02 00`)
-   - `0xfff80003` — **Footpedal right** (`04 00`)

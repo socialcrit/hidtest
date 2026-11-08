@@ -10159,7 +10159,7 @@ const examples = [
             "tap_hold_threshold": 200000,
             "gpio_debounce_time_ms": 5,
             "interval_override": 0,
-            "our_descriptor_number": 6,
+            "our_descriptor_number": 0,
             "ignore_auth_dev_inputs": false,
             "macro_entry_duration": 1,
             "gpio_output_mode": 0,
@@ -10168,7 +10168,7 @@ const examples = [
             "mappings": [
                 {
                     "source_usage": "0x00090004",
-                    "target_usage": "0xfff80001",
+                    "target_usage": "0x00090011",
                     "layers": [
                         0
                     ],
@@ -10181,7 +10181,7 @@ const examples = [
                 },
                 {
                     "source_usage": "0x00090003",
-                    "target_usage": "0xfff80002",
+                    "target_usage": "0x00090012",
                     "layers": [
                         0
                     ],
@@ -10194,7 +10194,7 @@ const examples = [
                 },
                 {
                     "source_usage": "0x00090005",
-                    "target_usage": "0xfff80003",
+                    "target_usage": "0x00090013",
                     "layers": [
                         0
                     ],
@@ -10207,7 +10207,7 @@ const examples = [
                 },
                 {
                     "source_usage": "0xfff40002",
-                    "target_usage": "0xfff80001",
+                    "target_usage": "0x00090011",
                     "layers": [
                         0
                     ],
@@ -10220,7 +10220,7 @@ const examples = [
                 },
                 {
                     "source_usage": "0xfff40003",
-                    "target_usage": "0xfff80002",
+                    "target_usage": "0x00090012",
                     "layers": [
                         0
                     ],
@@ -10233,7 +10233,7 @@ const examples = [
                 },
                 {
                     "source_usage": "0xfff40004",
-                    "target_usage": "0xfff80003",
+                    "target_usage": "0x00090013",
                     "layers": [
                         0
                     ],

@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for single-Pico VEC USB Footpedal (Infinity IN-USB-2) + Keyboard & Mouse emulation in HID Remapper firmware and Web Configuration Tool, resolving composite report ID conflicts, USB interface ordering, USB manufacturer/product identification, ADC usage page collisions, and single-button (no-rollover) footpedal report sanitization.",
-  "updatedAt": "2026-11-05T04:21:55.524726846Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "Updated implementation plan reverting previous footpedal changes and implementing the PowerScribe One 3-Interface RP2040 HID Remapper consolidation architecture (ITF_NUM_PEDAL=0 on EP 0x81, ITF_NUM_HID=1 on EP 0x82, ITF_NUM_CONFIG=2 on EP 0x83, internal REPORT_ID_PEDAL=9 mapped to Button 17-19 / 0x00090011-0x00090013).",
+  "updatedAt":  "2026-11-08T21:21:08.625205683Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }

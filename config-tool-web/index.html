@@ -188,7 +188,6 @@
                             <option value="3">PS4 arcade stick</option>
                             <option value="4">Stadia controller</option>
                             <option value="5">XAC/Flex compatible</option>
-                            <option value="6">Footpedal (VEC USB Footpedal / Infinity IN-USB-2 + Keyboard &amp; Mouse)</option>
                         </select>
                     </div>
                 </div>
@@ -331,12 +330,12 @@
 
                 <div class="card mt-4 mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong>VEC USB Footpedal (05F3:00FF) Descriptor &amp; CircuitPython Reference</strong>
-                        <span class="text-muted small">VID: 0x05F3 · PID: 0x00FF · 2-byte unnumbered reports (0100 L / 0200 M / 0400 R)</span>
+                        <strong>VEC USB Footpedal (05F3:00FF) 3-Interface Composite Architecture &amp; CircuitPython Reference</strong>
+                        <span class="text-muted small">VID: 0x05F3 · PID: 0x00FF · Interface 0 (EP 0x81) · Button 17–19 (0x00090011–0x00090013)</span>
                     </div>
                     <div class="card-body">
                         <p class="small text-muted mb-2">
-                            When <strong>Emulated device type</strong> is set to <strong>Footpedal (VEC USB Footpedal / Infinity IN-USB-2 + Keyboard &amp; Mouse)</strong>, HID Remapper exposes a dedicated unnumbered USB HID interface for the 35-byte VEC Footpedal report descriptor (enforcing single-button <code>0100</code>, <code>0200</code>, <code>0400</code> packets with no rollover) alongside standard Keyboard &amp; Mouse interfaces.
+                            HID Remapper exposes a global 3-interface USB composite layout (<code>VID=0x05F3</code>, <code>PID=0x00FF</code>): <strong>Interface 0 (EP 0x81)</strong> provides a standalone 29-byte Report-ID-less VEC Footpedal interface (2-byte reports: <code>0100</code> Left, <code>0200</code> Middle, <code>0400</code> Right), <strong>Interface 1 (EP 0x82)</strong> provides standard Keyboard/Mouse/Gamepad output, and <strong>Interface 2 (EP 0x83)</strong> provides WebHID configuration. Map any button, key, or GPIO to <strong>Footpedal left (Button 17 / 0x00090011)</strong>, <strong>Footpedal middle (Button 18 / 0x00090012)</strong>, or <strong>Footpedal right (Button 19 / 0x00090013)</strong>.
                         </p>
                         <pre class="bg-light p-3 rounded small mb-0"><code>FOOTPAD_REPORT_DESCRIPTOR = bytes((  
     0x05, 0x0C,  #   Usage Page (Consumer)    

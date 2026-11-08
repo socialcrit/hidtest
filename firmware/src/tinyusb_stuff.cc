@@ -32,10 +32,20 @@
 #include "platform.h"
 #include "remapper.h"
 
-// These IDs are bogus. If you want to distribute any hardware using this,
-// you will have to get real ones.
-#define USB_VID 0xCAFE
-#define USB_PID 0xBAF2
+// VEC / PI Engineering VEC Infinity Footpedal identification
+#define USB_VID 0x05F3
+#define USB_PID 0x00FF
+
+enum {
+    ITF_NUM_PEDAL = 0,   // Interface 0: VEC Foot Pedal (no Report ID)
+    ITF_NUM_HID,         // Interface 1: Keyboard / Mouse
+    ITF_NUM_CONFIG,      // Interface 2: Web Config (0xFF00)
+    ITF_NUM_TOTAL
+};
+
+#define EPNUM_PEDAL   0x81
+#define EPNUM_HID     0x82
+#define EPNUM_CONFIG  0x83
 
 tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
@@ -52,52 +62,51 @@ tusb_desc_device_t desc_device = {
 
     .iManufacturer = 0x01,
     .iProduct = 0x02,
-    .iSerialNumber = 0x03,
+    .iSerialNumber = 0x00,
 
     .bNumConfigurations = 0x01,
 };
 
 const uint8_t configuration_descriptor0[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_KEYBOARD, our_descriptors[0].descriptor_length, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUD_CONFIG_DESC_LEN + 3 * TUD_HID_DESC_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, pedal_report_descriptor_length, EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_KEYBOARD, our_descriptors[0].descriptor_length, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 const uint8_t configuration_descriptor1[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_KEYBOARD, our_descriptors[1].descriptor_length, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUD_CONFIG_DESC_LEN + 3 * TUD_HID_DESC_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, pedal_report_descriptor_length, EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_KEYBOARD, our_descriptors[1].descriptor_length, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 const uint8_t configuration_descriptor2[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
-    TUD_HID_INOUT_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[2].descriptor_length, 0x02, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, pedal_report_descriptor_length, EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[2].descriptor_length, 0x02, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 const uint8_t configuration_descriptor3[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[3].descriptor_length, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUD_CONFIG_DESC_LEN + 3 * TUD_HID_DESC_LEN, 0, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, pedal_report_descriptor_length, EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[3].descriptor_length, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 const uint8_t configuration_descriptor4[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
-    TUD_HID_INOUT_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[4].descriptor_length, 0x02, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, pedal_report_descriptor_length, EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[4].descriptor_length, 0x02, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 const uint8_t configuration_descriptor5[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[5].descriptor_length, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
-};
-
-const uint8_t configuration_descriptor6[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 3, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_KEYBOARD, our_descriptors[6].descriptor_length, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, our_report_descriptor_footpedal_length, 0x82, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(2, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, TUD_CONFIG_DESC_LEN + 3 * TUD_HID_DESC_LEN, 0, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_PEDAL, 0, HID_ITF_PROTOCOL_NONE, pedal_report_descriptor_length, EPNUM_PEDAL, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[5].descriptor_length, EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONFIG, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_CONFIG, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 const uint8_t* configuration_descriptors[] = {
@@ -107,18 +116,13 @@ const uint8_t* configuration_descriptors[] = {
     configuration_descriptor3,
     configuration_descriptor4,
     configuration_descriptor5,
-    configuration_descriptor6,
 };
 
 char const* string_desc_arr[] = {
     (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
-#ifdef PICO_RP2350
-    "RP2350",  // 1: Manufacturer
-#else
-    "RP2040",  // 1: Manufacturer
-#endif
-    "HID Remapper XXXX",  // 2: Product
-    "123456789012",       // 3: Serial Number
+    "VEC",                         // 1: Manufacturer
+    "VEC USB Footpedal",           // 2: Product
+    "123456789012",                // 3: Serial Number
 };
 
 // Invoked when received GET DEVICE DESCRIPTOR
@@ -140,20 +144,12 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
-    if (our_descriptor->secondary_descriptor != nullptr) {
-        if (itf == 0) {
-            return our_descriptor->descriptor;
-        } else if (itf == 1) {
-            return our_descriptor->secondary_descriptor;
-        } else if (itf == 2) {
-            return config_report_descriptor;
-        }
-    } else {
-        if (itf == 0) {
-            return our_descriptor->descriptor;
-        } else if (itf == 1) {
-            return config_report_descriptor;
-        }
+    if (itf == ITF_NUM_PEDAL) {
+        return pedal_report_descriptor;
+    } else if (itf == ITF_NUM_HID) {
+        return our_descriptor->descriptor;
+    } else if (itf == ITF_NUM_CONFIG) {
+        return config_report_descriptor;
     }
 
     return NULL;
@@ -179,12 +175,6 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             return NULL;
 
         const char* str = string_desc_arr[index];
-        if (index == 1 && our_descriptor->manufacturer_name != nullptr) {
-            str = our_descriptor->manufacturer_name;
-        }
-        if (index == 2 && our_descriptor->product_name != nullptr) {
-            str = our_descriptor->product_name;
-        }
 
         // Cap at max char
         chr_count = strlen(str);
@@ -194,13 +184,6 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         // Convert ASCII string into UTF-16
         for (uint8_t i = 0; i < chr_count; i++) {
             _desc_str[1 + i] = str[i];
-        }
-
-        if (index == 2 && our_descriptor->product_name == nullptr) {
-            uint64_t unique_id = get_unique_id();
-            for (uint8_t i = 0; i < 4; i++) {
-                _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
-            }
         }
 
         if (index == 3) {
@@ -218,46 +201,26 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 }
 
 uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
-    if (our_descriptor->secondary_descriptor != nullptr) {
-        if (itf == 0) {
-            return handle_get_report0(report_id, buffer, reqlen);
-        } else if (itf == 1) {
-            return 0;
-        } else {
-            return handle_get_report1(report_id, buffer, reqlen);
-        }
+    if (itf == ITF_NUM_PEDAL) {
+        return 0;
+    } else if (itf == ITF_NUM_HID) {
+        return handle_get_report0(report_id, buffer, reqlen);
     } else {
-        if (itf == 0) {
-            return handle_get_report0(report_id, buffer, reqlen);
-        } else {
-            return handle_get_report1(report_id, buffer, reqlen);
-        }
+        return handle_get_report1(report_id, buffer, reqlen);
     }
 }
 
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    if (our_descriptor->secondary_descriptor != nullptr) {
-        if (itf == 0) {
-            if ((report_id == 0) && (report_type == 0) && (bufsize > 0)) {
-                report_id = buffer[0];
-                buffer++;
-            }
-            handle_set_report0(report_id, buffer, bufsize);
-        } else if (itf == 1) {
-            // footpedal has no set report
-        } else {
-            handle_set_report1(report_id, buffer, bufsize);
+    if (itf == ITF_NUM_PEDAL) {
+        // footpedal has no set report
+    } else if (itf == ITF_NUM_HID) {
+        if ((report_id == 0) && (report_type == 0) && (bufsize > 0)) {
+            report_id = buffer[0];
+            buffer++;
         }
+        handle_set_report0(report_id, buffer, bufsize);
     } else {
-        if (itf == 0) {
-            if ((report_id == 0) && (report_type == 0) && (bufsize > 0)) {
-                report_id = buffer[0];
-                buffer++;
-            }
-            handle_set_report0(report_id, buffer, bufsize);
-        } else {
-            handle_set_report1(report_id, buffer, bufsize);
-        }
+        handle_set_report1(report_id, buffer, bufsize);
     }
 }
 

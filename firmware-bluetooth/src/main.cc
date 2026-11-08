@@ -712,12 +712,13 @@ static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uin
         report_with_id++;
         len--;
     }
-    if (interface == 0) {
+    if ((interface == 0) || (interface == 1)) {
         return CHK(hid_int_ep_write(hid_dev0, report_with_id, len, NULL));
     }
-    if (interface == 1) {
+    if (interface == 2) {
         return CHK(hid_int_ep_write(hid_dev1, report_with_id, len, NULL));
     }
+    return false;
 }
 
 static void button_init() {

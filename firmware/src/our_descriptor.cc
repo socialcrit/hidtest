@@ -133,6 +133,23 @@ const uint8_t our_report_descriptor_kb_mouse[] = {
     0x95, 0x01,                //   Report Count (1)
     0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,                      // End Collection
+
+    0x05, 0x0C,                // Usage Page (Consumer)
+    0x09, 0x03,                // Usage (Programmable Buttons)
+    0xA1, 0x01,                // Collection (Application)
+    0x85, REPORT_ID_PEDAL,     //   Report ID (9 - internal tracking only)
+    0x05, 0x09,                //   Usage Page (Button)
+    0x19, 0x11,                //   Usage Minimum (Button 17 -> Left Pedal)
+    0x29, 0x13,                //   Usage Maximum (Button 19 -> Right Pedal)
+    0x15, 0x00,                //   Logical Minimum (0)
+    0x25, 0x01,                //   Logical Maximum (1)
+    0x95, 0x03,                //   Report Count (3)
+    0x75, 0x01,                //   Report Size (1)
+    0x81, 0x02,                //   Input (Data,Var,Abs)
+    0x95, 0x01,                //   Report Count (1)
+    0x75, 0x0D,                //   Report Size (13)
+    0x81, 0x01,                //   Input (Const,Ary,Abs)
+    0xC0,                      // End Collection
 };
 
 const uint8_t our_report_descriptor_absolute[] = {
@@ -261,6 +278,23 @@ const uint8_t our_report_descriptor_absolute[] = {
     0x09, 0x2F,                //   Usage (Phone Mute)
     0x95, 0x01,                //   Report Count (1)
     0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,                      // End Collection
+
+    0x05, 0x0C,                // Usage Page (Consumer)
+    0x09, 0x03,                // Usage (Programmable Buttons)
+    0xA1, 0x01,                // Collection (Application)
+    0x85, REPORT_ID_PEDAL,     //   Report ID (9 - internal tracking only)
+    0x05, 0x09,                //   Usage Page (Button)
+    0x19, 0x11,                //   Usage Minimum (Button 17 -> Left Pedal)
+    0x29, 0x13,                //   Usage Maximum (Button 19 -> Right Pedal)
+    0x15, 0x00,                //   Logical Minimum (0)
+    0x25, 0x01,                //   Logical Maximum (1)
+    0x95, 0x03,                //   Report Count (3)
+    0x75, 0x01,                //   Report Size (1)
+    0x81, 0x02,                //   Input (Data,Var,Abs)
+    0x95, 0x01,                //   Report Count (1)
+    0x75, 0x0D,                //   Report Size (13)
+    0x81, 0x01,                //   Input (Const,Ary,Abs)
     0xC0,                      // End Collection
 };
 
@@ -518,76 +552,25 @@ uint8_t const our_report_descriptor_xac_compat[] = {
     0xC0,              // End Collection
 };
 
-/*
- * Reference CircuitPython VEC USB Footpedal (Infinity IN-USB-2) definition:
- *
- * FOOTPAD_REPORT_DESCRIPTOR = bytes((
- *     0x05, 0x0C,  #   Usage Page (Consumer)
- *     0x09, 0x03,  #   Usage (Programmable Buttons)
- *     0xA1, 0x01,  #   Collection (Application)
- *     0x05, 0x09,  #   Usage Page (Button)
- *     0x19, 0x01,  #   Usage Minimum (0x01)
- *     0x29, 0x03,  #   Usage Maximum (0x03)
- *     0x15, 0x00,  #   Logical Minimum (0)
- *     0x25, 0x01,  #   Logical Maximum (1)
- *     0x95, 0x03,  #   Report Count (3)  Button? (1 bit per each of 3 buttons)
- *     0x75, 0x01,  #   Report Size (1)
- *     0x81, 0x02,  #   Input
- *     0x95, 0x01,  #   Report Count (1)
- *     0x75, 0x05,  #   Report Size (5)  5 bits of padding?
- *     0x81, 0x01,  #   Input
- *     0x95, 0x01,  #   Report Count (1)
- *     0x75, 0x08,  #   Report Size (8)  8 bits of padding?
- *     0x81, 0x01,  #   Input
- *     0xC0,        #   End Collection
- * ))
- *
- * footpad = usb_hid.Device(
- *     report_descriptor=FOOTPAD_REPORT_DESCRIPTOR,
- *     usage_page=0x0C,
- *     usage=0x03,
- *     report_ids=(0,),
- *     in_report_lengths=(2,),    # 3 bits data + 5 bits padding + 8 bits padding (0100=L, 0200=M, 0400=R)
- *     out_report_lengths=(0,),
- * )
- *
- * supervisor.set_usb_identification(
- *     manufacturer='VEC',
- *     product='VEC USB Footpedal',
- *     vid=0x05F3,
- *     pid=0x00FF
- * )
- */
-const uint8_t our_report_descriptor_footpedal[] = {
-    0x05, 0x0C,        // Usage Page (Consumer)
-    0x09, 0x03,        // Usage (Programmable Buttons)
-    0xA1, 0x01,        // Collection (Application)
-    0x05, 0x09,        //   Usage Page (Button)
-    0x19, 0x01,        //   Usage Minimum (0x01)
-    0x29, 0x03,        //   Usage Maximum (0x03)
-    0x15, 0x00,        //   Logical Minimum (0)
-    0x25, 0x01,        //   Logical Maximum (1)
-    0x95, 0x03,        //   Report Count (3)
-    0x75, 0x01,        //   Report Size (1)
-    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x01,        //   Report Count (1)
-    0x75, 0x05,        //   Report Size (5)
-    0x81, 0x01,        //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x01,        //   Report Count (1)
-    0x75, 0x08,        //   Report Size (8)
-    0x81, 0x01,        //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,              // End Collection
+// Standalone Report-ID-less descriptor exposed on USB Interface 0 (MI_00)
+const uint8_t pedal_report_descriptor[] = {
+    0x05, 0x0C,  // Usage Page (Consumer)
+    0x09, 0x03,  // Usage (Programmable Buttons)
+    0xA1, 0x01,  // Collection (Application)
+    0x05, 0x09,  //   Usage Page (Button)
+    0x19, 0x01,  //   Usage Minimum (Button 1 - Left Pedal)
+    0x29, 0x03,  //   Usage Maximum (Button 3 - Right Pedal)
+    0x15, 0x00,  //   Logical Minimum (0)
+    0x25, 0x01,  //   Logical Maximum (1)
+    0x95, 0x03,  //   Report Count (3)
+    0x75, 0x01,  //   Report Size (1)
+    0x81, 0x02,  //   Input (Data,Var,Abs)
+    0x95, 0x01,  //   Report Count (1)
+    0x75, 0x0D,  //   Report Size (13 bits constant padding = 2 bytes total)
+    0x81, 0x01,  //   Input (Const,Ary,Abs)
+    0xC0         // End Collection
 };
-const uint32_t our_report_descriptor_footpedal_length = sizeof(our_report_descriptor_footpedal);
-
-void footpedal_sanitize_report(uint8_t report_id, uint8_t* buffer, uint16_t len) {
-    if ((report_id == 0) && (len >= 2)) {
-        uint8_t buttons = buffer[0] & 0x07;
-        // Enforce single-button (no rollover): emit only 0100 (Left), 0200 (Middle), 0400 (Right), or 0000
-        buffer[0] = buttons & (-buttons);
-        buffer[1] = 0x00;
-    }
-}
+const uint32_t pedal_report_descriptor_length = sizeof(pedal_report_descriptor);
 
 void kb_mouse_handle_set_report(uint8_t report_id, const uint8_t* buffer, uint16_t reqlen) {
     if (report_id == REPORT_ID_MULTIPLIER && reqlen >= 1) {
@@ -619,14 +602,7 @@ bool kb_mouse_should_cause_wakeup(uint8_t report_id, const uint8_t* buffer, uint
         return false;
     }
 
-    if (report_id == REPORT_ID_MOUSE) {
-        if ((len > 0) && (buffer[0] != 0)) {
-            return true;
-        }
-        return false;
-    }
-
-    if (report_id == 0) {
+    if ((report_id == REPORT_ID_MOUSE) || (report_id == REPORT_ID_PEDAL)) {
         if ((len > 0) && (buffer[0] != 0)) {
             return true;
         }
@@ -770,23 +746,6 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = xac_compat_clear_report,
         .default_value = ps4_stadia_default_value,  // sic
-    },
-    {
-        .idx = 6,
-        .descriptor = our_report_descriptor_kb_mouse,
-        .descriptor_length = sizeof(our_report_descriptor_kb_mouse),
-        .vid = 0x05F3,
-        .pid = 0x00FF,
-        .handle_received_report = do_handle_received_report,
-        .handle_get_report = kb_mouse_handle_get_report,
-        .handle_set_report = kb_mouse_handle_set_report,
-        .set_report_synchronous = kb_mouse_set_report_synchronous,
-        .sanitize_report = footpedal_sanitize_report,
-        .should_cause_wakeup = kb_mouse_should_cause_wakeup,
-        .secondary_descriptor = our_report_descriptor_footpedal,
-        .secondary_descriptor_length = sizeof(our_report_descriptor_footpedal),
-        .manufacturer_name = "VEC",
-        .product_name = "VEC USB Footpedal",
     },
 };
 
